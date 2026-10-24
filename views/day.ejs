@@ -1,0 +1,97 @@
+<%- include('header', { title: branch.name + ' ' + date }) %>
+<%
+  const diff = day && day.status === 'closed' ? day.counted_cash - day.expected_cash : null;
+  const prev = new Date(new Date(date + 'T12:00:00Z').getTime() - 864e5).toISOString().slice(0,10);
+  const next = new Date(new Date(date + 'T12:00:00Z').getTime() + 864e5).toISOString().slice(0,10);
+%>
+<div class="row between">
+  <div><h1><%= branch.name %></h1><p class="muted"><%= branch.business %> · <b><%= date %></b><%= date === today ? ' (today)' : '' %>
+    · <span class="badge <%= day && day.status === 'closed' ? 'closed' : 'open' %>"><%= day ? day.status.toUpperCase() : 'NOT STARTED' %></span></p></div>
+  <div class="row"><a class="btn ghost" href="/day/<%= branch.id %>/<%= prev %>">← Prev day</a>
+    <% if (date < today) { %><a class="btn ghost" href="/day/<%= branch.id %>/<%= next %>">Next day →</a><% } %></div>
+</div>
+
+<div class="stats">
+  <div class="stat"><span>Opening cash</span><b><%= rs(day ? day.opening_cash : 0) %></b></div>
+  <div class="stat good"><span>Income</span><b><%= rs(t.income) %></b></div>
+  <div class="stat bad"><span>Expenses</span><b><%= rs(t.expense) %></b></div>
+  <div class="stat"><span>Net</span><b><%= rs(t.net) %></b></div>
+  <div class="stat"><span>Expected cash in drawer</span><b><%= rs(t.expectedCash) %></b></div>
+  <% if (diff !== null) { %><div class="stat <%= diff === 0 ? 'good' : 'bad' %>"><span>Counted / difference</span><b><%= rs(day.counted_cash) %> (<%= diff === 0 ? 'matches' : (diff < 0 ? 'short ' : 'excess ') + rs(Math.abs(diff)) %>)</b></div><% } %>
+</div>
+
+<% if (editable) { %>
+<div class="grid2">
+  <div class="card"><h2>Add entry</h2>
+    <form method="post" action="/day/<%= branch.id %>/<%= date %>/entries" class="stack">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <div class="seg"><label><input type="radio" name="type" value="income" checked onchange="filterCats(this.form)"> Income</label>
+        <label><input type="radio" name="type" value="expense" onchange="filterCats(this.form)"> Expense</label></div>
+      <label>Amount (Rs) <input name="amount" inputmode="numeric" required></label>
+      <label>Category <select name="category" required>
+        <% cats.forEach(c => { %><option data-type="<%= c.type %>"><%= c.name %></option><% }) %></select></label>
+      <label>Paid by <select name="method"><% methods.forEach(m => { %><option><%= m %></option><% }) %></select></label>
+      <label>Note (optional) <input name="note" maxlength="300"></label>
+      <button>Add</button>
+    </form></div>
+  <div class="card">
+    <h2>Opening cash</h2>
+    <form method="post" action="/day/<%= branch.id %>/<%= date %>/open" class="row">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <input name="opening_cash" inputmode="numeric" value="<%= day ? day.opening_cash : '' %>" placeholder="Cash in drawer at start">
+      <button class="ghost">Save</button></form>
+    <h2>Close the day</h2>
+    <p class="muted small">Count the cash in the drawer. Expected right now: <b><%= rs(t.expectedCash) %></b>. Only "Cash" payments count towards the drawer.</p>
+    <form method="post" action="/day/<%= branch.id %>/<%= date %>/close" class="stack" onsubmit="return confirm('Close the day? You will not be able to change entries after this.')">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <label>Cash counted (Rs) <input name="counted_cash" inputmode="numeric" required></label>
+      <label>Note (optional) <input name="note"></label>
+      <button class="dark">Close day</button></form>
+  </div>
+</div>
+<% } else if (user.role !== 'owner') { %>
+  <div class="flash">This day is <%= day && day.status === 'closed' ? 'closed' : 'not editable' %>. Ask the owner if something needs to be fixed.</div>
+<% } %>
+<% if (user.role === 'owner' && day && day.status === 'closed') { %>
+  <form method="post" action="/day/<%= branch.id %>/<%= date %>/reopen" class="row card">
+    <input type="hidden" name="_csrf" value="<%= csrf %>"><input name="reason" placeholder="Reason to reopen" required><button class="ghost">Reopen day</button></form>
+<% } %>
+
+<div class="card"><h2>Entries (<%= entries.filter(e => !e.voided).length %>)</h2>
+<div class="tablewrap"><table>
+<tr><th>#</th><th>Time</th><th>Type</th><th>Category</th><th class="r">Amount</th><th>Method</th><th>Note</th><th>By</th><th></th></tr>
+<% entries.forEach(e => { %>
+<tr class="<%= e.voided ? 'voided' : '' %>">
+  <td><%= e.id %></td><td class="nowrap"><%= fmtTime(e.created_at).split(', ').pop() %><%= e.updated_at && !e.voided ? ' (edited)' : '' %></td>
+  <td><span class="tag <%= e.type %>"><%= e.type %></span></td><td><%= e.category %></td>
+  <td class="r"><%= rs(e.amount) %></td><td><%= e.method %></td><td><%= e.note || '' %><%= e.voided ? ' — VOIDED: ' + e.void_reason : '' %></td><td><%= e.created_by_name %></td>
+  <td><% if (editable && !e.voided) { %><details><summary>Edit</summary>
+    <form method="post" action="/entries/<%= e.id %>/edit" class="stack small">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <select name="type" onchange="filterCats(this.form)"><option value="income" <%= e.type==='income'?'selected':'' %>>income</option><option value="expense" <%= e.type==='expense'?'selected':'' %>>expense</option></select>
+      <input name="amount" value="<%= e.amount %>" inputmode="numeric">
+      <select name="category"><% cats.forEach(c => { %><option data-type="<%= c.type %>" <%= c.name===e.category && c.type===e.type ?'selected':'' %>><%= c.name %></option><% }) %></select>
+      <select name="method"><% methods.forEach(m => { %><option <%= m===e.method?'selected':'' %>><%= m %></option><% }) %></select>
+      <input name="note" value="<%= e.note || '' %>" placeholder="Note">
+      <input name="reason" placeholder="Reason for change (required)" required>
+      <button>Save change</button></form>
+    <form method="post" action="/entries/<%= e.id %>/void" class="stack small">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <input name="reason" placeholder="Reason to void (required)" required><button class="danger">Void entry</button></form>
+  </details><% } %></td>
+</tr><% }) %>
+<% if (!entries.length) { %><tr><td colspan="9" class="muted">No entries yet.</td></tr><% } %>
+</table></div></div>
+
+<% if (user.role === 'owner') { %>
+<div class="card"><h2>History for this day</h2><div class="tablewrap"><table>
+<tr><th>When</th><th>Who</th><th>Branch</th><th>What</th><th>Details</th></tr>
+<% history.forEach(a => { %><%- include('auditrow', { a }) %><% }) %>
+</table></div></div>
+<% } %>
+<script>
+function filterCats(f){const t=(f.querySelector('[name=type]:checked')||f.querySelector('select[name=type]')).value;const s=f.querySelector('[name=category]');let first=null;
+[...s.options].forEach(o=>{o.hidden=o.dataset.type!==t;if(!o.hidden&&!first)first=o;});if(s.selectedOptions[0]&&s.selectedOptions[0].hidden)s.value=first.value;}
+document.querySelectorAll('form').forEach(f=>{if(f.querySelector('[name=category]'))filterCats(f);});
+</script>
+<%- include('footer') %>

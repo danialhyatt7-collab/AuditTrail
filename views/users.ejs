@@ -1,0 +1,16 @@
+<%- include('header', { title: 'Team' }) %>
+<h1>Team</h1>
+<div class="card"><div class="tablewrap"><table><tr><th>Name</th><th>Username</th><th>Role</th><th>Branch</th><th>Status</th><th>Actions</th></tr>
+<% users.forEach(u => { %><tr><td><%= u.name %></td><td><%= u.username %></td><td><%= u.role %></td><td><%= u.branch_name || 'All' %></td><td><%= u.active ? 'Active' : 'Disabled' %></td>
+<td><% if (u.role !== 'owner') { %><div class="row">
+  <form method="post" action="/owner/users/<%= u.id %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="do" value="toggle"><button class="ghost"><%= u.active ? 'Disable' : 'Enable' %></button></form>
+  <form method="post" action="/owner/users/<%= u.id %>" class="row"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="do" value="password"><input name="password" placeholder="New password" minlength="6" required><button class="ghost">Reset</button></form>
+  <form method="post" action="/owner/users/<%= u.id %>" class="row"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="do" value="branch"><select name="branch_id"><% branches.forEach(b => { %><option value="<%= b.id %>" <%= b.id===u.branch_id?'selected':'' %>><%= b.name %></option><% }) %></select><button class="ghost">Move</button></form>
+</div><% } %></td></tr><% }) %></table></div></div>
+<div class="card narrow"><h2>Add cashier</h2>
+<form method="post" action="/owner/users" class="stack"><input type="hidden" name="_csrf" value="<%= csrf %>">
+  <label>Name <input name="name" required></label><label>Username <input name="username" required></label>
+  <label>Password <input name="password" minlength="6" required></label>
+  <label>Branch <select name="branch_id"><% branches.forEach(b => { %><option value="<%= b.id %>"><%= b.name %></option><% }) %></select></label>
+  <button>Add</button></form></div>
+<%- include('footer') %>

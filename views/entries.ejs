@@ -1,0 +1,16 @@
+<%- include('header', { title: 'Entries' }) %>
+<h1>All entries</h1>
+<form class="row card filters">
+  <select name="branch"><option value="">All branches</option><% branches.forEach(b => { %><option value="<%= b.id %>" <%= q.branch == b.id ? 'selected' : '' %>><%= b.name %></option><% }) %></select>
+  <select name="type"><option value="">Income + expense</option><option value="income" <%= q.type==='income'?'selected':'' %>>Income</option><option value="expense" <%= q.type==='expense'?'selected':'' %>>Expense</option></select>
+  <input type="date" name="from" value="<%= q.from %>"><input type="date" name="to" value="<%= q.to %>"><button>Filter</button>
+  <a class="btn ghost" href="/owner/export.csv?<%= new URLSearchParams(q) %>">Download Excel (CSV)</a>
+</form>
+<div class="stats"><div class="stat good"><span>Income</span><b><%= rs(t.income) %></b></div><div class="stat bad"><span>Expenses</span><b><%= rs(t.expense) %></b></div><div class="stat"><span>Net</span><b><%= rs(t.net) %></b></div></div>
+<div class="card"><div class="tablewrap"><table>
+<tr><th>#</th><th>Date</th><th>Branch</th><th>Type</th><th>Category</th><th class="r">Amount</th><th>Method</th><th>Note</th><th>By</th><th>Entered</th></tr>
+<% rows.forEach(e => { %><tr class="<%= e.voided ? 'voided' : '' %>"><td><%= e.id %></td><td><a href="/day/<%= e.branch_id %>/<%= e.date %>"><%= e.date %></a></td><td><%= e.branch_name.split(' ')[0] %></td>
+<td><span class="tag <%= e.type %>"><%= e.type %></span></td><td><%= e.category %></td><td class="r"><%= rs(e.amount) %></td><td><%= e.method %></td>
+<td><%= e.note || '' %><%= e.voided ? ' — VOIDED: ' + e.void_reason : '' %></td><td><%= e.created_by_name %></td><td class="nowrap small"><%= fmtTime(e.created_at) %><%= e.updated_at ? ' · edited' : '' %></td></tr><% }) %>
+<% if (!rows.length) { %><tr><td colspan="10" class="muted">No entries.</td></tr><% } %></table></div></div>
+<%- include('footer') %>

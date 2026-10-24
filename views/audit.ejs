@@ -1,0 +1,11 @@
+<%- include('header', { title: 'Activity log' }) %>
+<h1>Activity log</h1><p class="muted">Every action by everyone. This log cannot be edited or deleted.</p>
+<form class="row card filters">
+  <select name="branch"><option value="">All branches</option><% branches.forEach(b => { %><option value="<%= b.id %>" <%= q.branch == b.id ? 'selected' : '' %>><%= b.name %></option><% }) %></select>
+  <select name="action"><option value="">All actions</option><% actions.forEach(a => { %><option <%= q.action === a ? 'selected' : '' %>><%= a %></option><% }) %></select>
+  <input type="date" name="from" value="<%= q.from %>"><input type="date" name="to" value="<%= q.to %>"><button>Filter</button>
+</form>
+<div class="card"><div class="tablewrap"><table><tr><th>When</th><th>Who</th><th>Branch</th><th>What</th><th>Details</th></tr>
+<% rows.forEach(a => { %><%- include('auditrow', { a }) %><% }) %>
+<% if (!rows.length) { %><tr><td colspan="5" class="muted">Nothing found.</td></tr><% } %></table></div></div>
+<%- include('footer') %>

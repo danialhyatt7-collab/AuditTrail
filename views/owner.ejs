@@ -1,0 +1,72 @@
+<%- include('header', { title: 'Dashboard' }) %>
+<%
+  const all = (rows) => Object.values(rows).reduce((a, r) => ({ income: a.income + r.income, expense: a.expense + r.expense }), { income: 0, expense: 0 });
+  const tAll = all(todayRows), mAll = all(monthRows);
+  const dates = [...new Set(daily.map(d => d.date))];
+  const perDate = dates.map(dt => ({ date: dt, rows: daily.filter(d => d.date === dt) }));
+  const maxInc = Math.max(1, ...perDate.map(p => p.rows.reduce((s, r) => s + r.income, 0)));
+%>
+<h1>Dashboard</h1><p class="muted">Today is <%= today %> (Pakistan time)</p>
+
+<div class="grid3">
+<% branches.forEach(b => { const r = todayRows[b.id] || { income: 0, expense: 0 }; const m = monthRows[b.id] || { income: 0, expense: 0 };
+   const d = days.find(x => x.branch_id === b.id && x.date === today); %>
+  <div class="card">
+    <h2><%= b.name %></h2><p class="muted small"><%= b.business %> · <span class="badge <%= d && d.status==='closed' ? 'closed':'open' %>"><%= d ? d.status.toUpperCase() : 'NOT STARTED' %></span></p>
+    <div class="kv"><span>Today income</span><b class="good"><%= rs(r.income) %></b></div>
+    <div class="kv"><span>Today expenses</span><b class="bad"><%= rs(r.expense) %></b></div>
+    <div class="kv"><span>Today net</span><b><%= rs(r.income - r.expense) %></b></div>
+    <div class="kv"><span>This month net</span><b><%= rs(m.income - m.expense) %></b></div>
+    <a class="btn ghost" href="/day/<%= b.id %>/<%= today %>">Open today's page →</a>
+  </div>
+<% }) %>
+  <div class="card dark">
+    <h2>Both branches</h2><p class="small">Combined</p>
+    <div class="kv"><span>Today income</span><b><%= rs(tAll.income) %></b></div>
+    <div class="kv"><span>Today expenses</span><b><%= rs(tAll.expense) %></b></div>
+    <div class="kv"><span>Today net</span><b><%= rs(tAll.income - tAll.expense) %></b></div>
+    <div class="kv"><span>Month income</span><b><%= rs(mAll.income) %></b></div>
+    <div class="kv"><span>Month expenses</span><b><%= rs(mAll.expense) %></b></div>
+    <div class="kv"><span>Month net</span><b><%= rs(mAll.income - mAll.expense) %></b></div>
+  </div>
+</div>
+
+<% if (mismatches.length || alerts.length || bigExpenses.length) { %>
+<div class="card alertcard"><h2>⚠ Needs your attention</h2><ul>
+  <% mismatches.forEach(d => { const diff = d.counted_cash - d.expected_cash; %>
+    <li><a href="/day/<%= d.branch_id %>/<%= d.date %>"><%= d.date %> · <%= branchName(d.branch_id) %></a>: cash <b><%= diff < 0 ? 'SHORT' : 'EXCESS' %> <%= rs(Math.abs(diff)) %></b></li><% }) %>
+  <% bigExpenses.forEach(e => { %>
+    <li><a href="/day/<%= e.branch_id %>/<%= e.date %>"><%= e.date %> · <%= branchName(e.branch_id) %></a>: big expense <b><%= rs(e.amount) %></b> (<%= e.category %>)</li><% }) %>
+</ul>
+<% if (alerts.length) { %><div class="tablewrap"><table><% alerts.forEach(a => { %><%- include('auditrow', { a }) %><% }) %></table></div><% } %>
+</div><% } %>
+
+<div class="card"><h2>Last 30 days, daily income</h2>
+  <div class="legend"><% branches.forEach((b, i) => { %><span><i class="c<%= i %>"></i><%= b.name %></span><% }) %></div>
+  <div class="bars">
+  <% perDate.forEach(p => { %><div class="bar" title="<%= p.date %>">
+    <% branches.forEach((b, i) => { const r = p.rows.find(x => x.branch_id === b.id); if (r) { %>
+      <div class="bseg c<%= i %>" style="height:<%= (r.income / maxInc * 100).toFixed(1) %>%" title="<%= p.date %> <%= b.name %>: <%= rs(r.income) %>"></div><% } }) %>
+    <small><%= p.date.slice(8) %></small></div><% }) %>
+  <% if (!perDate.length) { %><p class="muted">No data yet.</p><% } %>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="card"><h2>Daily summary (30 days)</h2><div class="tablewrap"><table>
+    <tr><th>Date</th><th>Branch</th><th class="r">Income</th><th class="r">Expense</th><th class="r">Net</th><th>Cash</th></tr>
+    <% [...daily].reverse().forEach(r => { const d = days.find(x => x.branch_id === r.branch_id && x.date === r.date); const diff = d && d.status === 'closed' ? d.counted_cash - d.expected_cash : null; %>
+    <tr><td><a href="/day/<%= r.branch_id %>/<%= r.date %>"><%= r.date %></a></td><td><%= branchName(r.branch_id).split(' ')[0] %></td>
+      <td class="r"><%= rs(r.income) %></td><td class="r"><%= rs(r.expense) %></td><td class="r"><b><%= rs(r.income - r.expense) %></b></td>
+      <td class="<%= diff === null ? 'muted' : (diff === 0 ? 'good' : 'bad') %>"><%= diff === null ? (d ? d.status : '') : (diff === 0 ? 'OK' : (diff < 0 ? '−' : '+') + rs(Math.abs(diff))) %></td></tr><% }) %>
+  </table></div></div>
+  <div class="card"><h2>Top categories (<%= month %>)</h2><div class="tablewrap"><table>
+    <tr><th>Branch</th><th>Type</th><th>Category</th><th class="r">Total</th></tr>
+    <% topCats.slice(0, 15).forEach(c => { %><tr><td><%= branchName(c.branch_id).split(' ')[0] %></td><td><span class="tag <%= c.type %>"><%= c.type %></span></td><td><%= c.category %></td><td class="r"><%= rs(c.total) %></td></tr><% }) %>
+  </table></div></div>
+</div>
+
+<div class="card"><div class="row between"><h2>Latest activity</h2><a href="/owner/audit">Full activity log →</a></div>
+<div class="tablewrap"><table><tr><th>When</th><th>Who</th><th>Branch</th><th>What</th><th>Details</th></tr>
+<% feed.forEach(a => { %><%- include('auditrow', { a }) %><% }) %></table></div></div>
+<%- include('footer') %>

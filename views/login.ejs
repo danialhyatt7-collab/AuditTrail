@@ -1,0 +1,11 @@
+<%- include('header', { title: 'Login' }) %>
+<div class="card narrow">
+  <h1>AuditTrail</h1><p class="muted">Daily cash &amp; accounts</p>
+  <% if (error) { %><div class="flash error"><%= error %></div><% } %>
+  <form method="post" action="/login" class="stack">
+    <label>Username <input name="username" autocomplete="username" required autofocus></label>
+    <label>Password <input name="password" type="password" autocomplete="current-password" required></label>
+    <button>Log in</button>
+  </form>
+</div>
+<%- include('footer') %>

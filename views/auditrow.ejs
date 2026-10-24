@@ -1,0 +1,18 @@
+<%
+  const labels = { login:'Logged in', login_failed:'Failed login', entry_added:'Added entry', entry_edited:'Edited entry',
+    entry_edited_after_close:'Edited entry AFTER day close', entry_voided:'Voided entry', day_opened:'Opened day',
+    opening_cash_changed:'Changed opening cash', day_closed:'Closed day', day_reopened:'Reopened day',
+    export_csv:'Exported CSV', user_added:'Added user', user_disabled:'Disabled user', user_enabled:'Enabled user',
+    password_reset:'Reset password', password_changed:'Changed own password', user_branch_changed:'Changed user branch' };
+  const warn = ['entry_edited_after_close','day_reopened','entry_voided','login_failed'].includes(a.action);
+  let d = {}; try { d = a.details ? JSON.parse(a.details) : {}; } catch (e) {}
+  const show = (k, v) => Array.isArray(v) ? `${k}: ${k.includes('amount')||k.includes('cash') ? rs(v[0]) : (v[0] ?? '—')} → ${k.includes('amount')||k.includes('cash') ? rs(v[1]) : (v[1] ?? '—')}`
+    : `${k}: ${(k.includes('amount')||k.includes('cash')||['income','expense','difference'].includes(k)) && typeof v === 'number' ? rs(v) : v}`;
+%>
+<tr class="<%= warn ? 'warn' : '' %>">
+  <td class="nowrap"><%= fmtTime(a.at) %></td>
+  <td><%= a.user_name || '—' %></td>
+  <td><%= a.branch_id ? branchName(a.branch_id) : '' %></td>
+  <td><b><%= labels[a.action] || a.action %></b><%= a.entity === 'entry' ? ' #' + a.entity_id : (a.entity === 'day' ? ' ' + a.entity_id : '') %></td>
+  <td class="small"><%= Object.entries(d).map(([k, v]) => show(k, v)).join(' · ') %><% if (a.reason) { %><div><i>Reason: <%= a.reason %></i></div><% } %></td>
+</tr>

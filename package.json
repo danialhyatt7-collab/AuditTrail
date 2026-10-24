@@ -1,0 +1,29 @@
+{
+  "name": "audittrail",
+  "version": "1.0.0",
+  "description": "Daily cash, income and expense tracking with a full audit trail",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/danialhyatt7-collab/AuditTrail.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/danialhyatt7-collab/AuditTrail/issues"
+  },
+  "homepage": "https://github.com/danialhyatt7-collab/AuditTrail#readme",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "ejs": "^7.0.2",
+    "express": "^5.3.0",
+    "express-session": "^1.19.0"
+  },
+  "engines": {
+    "node": ">=22.13"
+  }
+}

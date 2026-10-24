@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title><%= typeof title !== 'undefined' ? title + ' · ' : '' %>AuditTrail</title>
+<link rel="stylesheet" href="/style.css"></head>
+<body>
+<% if (user) { %>
+<header class="top">
+  <a class="brand" href="/">AuditTrail</a>
+  <nav>
+    <% if (user.role === 'owner') { %>
+      <a href="/owner">Dashboard</a><a href="/owner/entries">Entries</a><a href="/owner/audit">Activity log</a><a href="/owner/users">Team</a>
+    <% } else { %><a href="/">Today</a><% } %>
+    <a href="/password">Password</a>
+    <form method="post" action="/logout" class="inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="link">Logout (<%= user.name %>)</button></form>
+  </nav>
+</header>
+<% } %>
+<main>
+<% if (flash) { %><div class="flash <%= flash.type %>"><%= flash.msg %></div><% } %>
