@@ -57,7 +57,7 @@ function totals(entries, opening = 0) {
 }
 
 app.use((req, res, next) => {
-  res.locals.user = req.session.user || null;
+  res.locals.user = req.session.user || null; res.locals.path = req.path;
   res.locals.rs = rs; res.locals.fmtTime = fmtTime; res.locals.today = today();
   res.locals.flash = req.session.flash; delete req.session.flash;
   if (!req.session.csrf) req.session.csrf = crypto.randomBytes(16).toString('hex');
@@ -321,5 +321,29 @@ app.post('/owner/users/:id', requireOwner, (req, res) => {
   flash(req, 'ok', 'Saved'); res.redirect('/owner/users');
 });
 
+// Dial gauge: a ring of ticks, the filled share ends in pale dots
+app.locals.gaugeSvg = (v) => {
+  v = Math.max(0, Math.min(100, v || 0));
+  const c = 130, R1 = 78, R2 = 104, n = 60; let t = '';
+  for (let i = 0; i < n; i++) {
+    const a = -Math.PI / 2 + i / n * 2 * Math.PI, on = i / n < v / 100;
+    t += `<line x1="${c + R1 * Math.cos(a)}" y1="${c + R1 * Math.sin(a)}" x2="${c + R2 * Math.cos(a)}" y2="${c + R2 * Math.sin(a)}" stroke="rgba(244,243,234,${on ? .85 : .25})" stroke-width="1.2"/>`;
+    if (on && i >= Math.floor(v / 100 * n) - 14) t += `<circle cx="${c + (R2 + 7) * Math.cos(a)}" cy="${c + (R2 + 7) * Math.sin(a)}" r="3" fill="#f2ecaa"/>`;
+  }
+  return `<svg viewBox="0 0 260 260" width="100%" role="img" aria-label="${v.toFixed(1)} percent">${t}<circle cx="${c}" cy="${c}" r="60" fill="none" stroke="rgba(244,243,234,.12)"/></svg>`;
+};
+const short = (n) => n >= 1e5 ? (n / 1e5).toFixed(2) + ' lac' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(n);
+app.locals.short = short;
+// Column chart of daily totals; the top 3 days are highlighted and labelled
+app.locals.columnsSvg = (vals, labels) => {
+  if (!vals.length) return '<p class="muted">No data yet.</p>';
+  const W = 640, H = 230, T = 26, Bm = 26, max = Math.max(1, ...vals), top = [...vals].sort((a, b) => b - a).slice(0, 3).filter((x) => x > 0), bw = (W - 20) / Math.max(vals.length, 8);
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Daily income">` + vals.map((x, i) => {
+    const h = Math.max(2, (H - T - Bm) * x / max), X = 10 + i * bw + bw * .22, hot = top.includes(x);
+    return `<rect x="${X}" y="${H - Bm - h}" width="${bw * .56}" height="${h}" rx="${Math.min(bw * .28, 6)}" fill="${hot ? '#f2ecaa' : 'rgba(244,243,234,.28)'}"><title>${labels[i]}: ${rs(x)}</title></rect>`
+      + (hot ? `<text x="${X + bw * .28}" y="${H - Bm - h - 8}" text-anchor="middle" font-size="11" style="fill:#f4f3ea">${short(x)}</text>` : '')
+      + (i % 5 === 0 || i === vals.length - 1 ? `<text x="${X + bw * .28}" y="${H - 8}" text-anchor="middle" font-size="10">${+labels[i].slice(8)}</text>` : '');
+  }).join('') + '</svg>';
+};
 app.locals.branchName = (id) => (branchById(id) || {}).name || '';
 app.listen(PORT, () => console.log(`AuditTrail running on http://localhost:${PORT}`));
